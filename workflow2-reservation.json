@@ -1,0 +1,271 @@
+{
+  "name": "Workflow 2 — Réservation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "book",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "book-reservation"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst dateStr = body.date;\nconst timeStr = body.time;\n\n// ── Calcul de l'offset DST Europe/Paris ──────────────────────────────────────\nconst d = new Date(dateStr);\nconst year = d.getFullYear();\n\nconst dstStart = new Date(year, 2, 31);\ndstStart.setDate(31 - dstStart.getDay());\n\nconst dstEnd = new Date(year, 9, 31);\ndstEnd.setDate(31 - dstEnd.getDay());\n\nconst offsetStr = (d >= dstStart && d < dstEnd) ? '+02:00' : '+01:00';\n\n// ── Calcul des dates de début et fin ─────────────────────────────────────────\nconst startISO = dateStr + 'T' + timeStr + ':00' + offsetStr;\n\nconst [hh, mm] = timeStr.split(':').map(Number);\nlet endHH = hh, endMM = mm + 30;\nif (endMM >= 60) { endMM -= 60; endHH++; }\nconst endTimeStr = String(endHH).padStart(2,'0') + ':' + String(endMM).padStart(2,'0');\nconst endISO = dateStr + 'T' + endTimeStr + ':00' + offsetStr;\n\n// Spread du body pour transmettre tous les champs (nom, email, tel, motif, message, source)\nreturn [{ json: { ...body, startISO, endISO } }];"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000002",
+      "name": "Préparer les dates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "VOTRE_EMAIL_GCAL@gmail.com",
+          "mode": "id"
+        },
+        "returnAll": true,
+        "options": {
+          "timeMin": "={{ $json.startISO }}",
+          "timeMax": "={{ $json.endISO }}"
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000003",
+      "name": "Vérifier disponibilité",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "REMPLACER_PAR_ID_CREDENTIAL_GCAL",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-slot-taken",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000004",
+      "name": "Créneau pris ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: 'slot_taken' }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000005",
+      "name": "Respond — slot_taken",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 160]
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "create",
+        "calendar": {
+          "__rl": true,
+          "value": "VOTRE_EMAIL_GCAL@gmail.com",
+          "mode": "id"
+        },
+        "start": "={{ $('Préparer les dates').first().json.startISO }}",
+        "end": "={{ $('Préparer les dates').first().json.endISO }}",
+        "additionalFields": {
+          "summary": "=RDV — {{ $('Préparer les dates').first().json.nom }}",
+          "attendees": "={{ $('Préparer les dates').first().json.email }}",
+          "description": "=Motif : {{ $('Préparer les dates').first().json.motif }}\n\nMessage : {{ $('Préparer les dates').first().json.message }}\n\nTéléphone : {{ $('Préparer les dates').first().json.telephone }}\n\nSource : {{ $('Préparer les dates').first().json.source }}",
+          "sendUpdates": "all"
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000006",
+      "name": "Créer événement GCal",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [1120, 440],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "REMPLACER_PAR_ID_CREDENTIAL_GCAL",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "REMPLACER_PAR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "REMPLACER_PAR_AIRTABLE_TABLE_ID",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Nom":      "={{ $('Préparer les dates').first().json.nom }}",
+            "Email":    "={{ $('Préparer les dates').first().json.email }}",
+            "Téléphone":"={{ $('Préparer les dates').first().json.telephone }}",
+            "Motif":    "={{ $('Préparer les dates').first().json.motif }}",
+            "Message":  "={{ $('Préparer les dates').first().json.message }}",
+            "Date RDV": "={{ $('Préparer les dates').first().json.date }}",
+            "Heure RDV":"={{ $('Préparer les dates').first().json.time }}",
+            "Statut":   "Nouveau",
+            "Source":   "={{ $('Préparer les dates').first().json.source }}"
+          }
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000007",
+      "name": "Airtable — Sauvegarder prospect",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [1340, 440],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "REMPLACER_PAR_ID_CREDENTIAL_AIRTABLE",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Préparer les dates').first().json.email }}",
+        "subject": "=Votre rendez-vous confirmé — {{ $('Préparer les dates').first().json.date }} à {{ $('Préparer les dates').first().json.time }}",
+        "emailType": "html",
+        "message": "=<p>Bonjour {{ $('Préparer les dates').first().json.nom }},</p>\n<p>Votre rendez-vous a bien été enregistré pour le <strong>{{ $('Préparer les dates').first().json.date }}</strong> à <strong>{{ $('Préparer les dates').first().json.time }}</strong>.</p>\n<p>Vous recevrez une invitation Google Calendar séparément.</p>\n<p>À très bientôt !</p>",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000008",
+      "name": "Email confirmation — prospect",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1560, 440],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REMPLACER_PAR_ID_CREDENTIAL_GMAIL",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "VOTRE_EMAIL@gmail.com",
+        "subject": "=Nouveau RDV — {{ $('Préparer les dates').first().json.nom }} — {{ $('Préparer les dates').first().json.date }} {{ $('Préparer les dates').first().json.time }}",
+        "emailType": "html",
+        "message": "=<p><strong>Nouveau rendez-vous réservé !</strong></p>\n<p>\n  <strong>Nom :</strong> {{ $('Préparer les dates').first().json.nom }}<br>\n  <strong>Email :</strong> {{ $('Préparer les dates').first().json.email }}<br>\n  <strong>Téléphone :</strong> {{ $('Préparer les dates').first().json.telephone }}<br>\n  <strong>Date :</strong> {{ $('Préparer les dates').first().json.date }} à {{ $('Préparer les dates').first().json.time }}<br>\n  <strong>Motif :</strong> {{ $('Préparer les dates').first().json.motif }}<br>\n  <strong>Message :</strong> {{ $('Préparer les dates').first().json.message }}<br>\n  <strong>Source :</strong> {{ $('Préparer les dates').first().json.source }}\n</p>",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000009",
+      "name": "Notification interne",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1780, 440],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REMPLACER_PAR_ID_CREDENTIAL_GMAIL",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000010",
+      "name": "Respond — success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2000, 440]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Préparer les dates", "type": "main", "index": 0 }]
+      ]
+    },
+    "Préparer les dates": {
+      "main": [
+        [{ "node": "Vérifier disponibilité", "type": "main", "index": 0 }]
+      ]
+    },
+    "Vérifier disponibilité": {
+      "main": [
+        [{ "node": "Créneau pris ?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Créneau pris ?": {
+      "main": [
+        [{ "node": "Respond — slot_taken", "type": "main", "index": 0 }],
+        [{ "node": "Créer événement GCal", "type": "main", "index": 0 }]
+      ]
+    },
+    "Créer événement GCal": {
+      "main": [
+        [{ "node": "Airtable — Sauvegarder prospect", "type": "main", "index": 0 }]
+      ]
+    },
+    "Airtable — Sauvegarder prospect": {
+      "main": [
+        [{ "node": "Email confirmation — prospect", "type": "main", "index": 0 }]
+      ]
+    },
+    "Email confirmation — prospect": {
+      "main": [
+        [{ "node": "Notification interne", "type": "main", "index": 0 }]
+      ]
+    },
+    "Notification interne": {
+      "main": [
+        [{ "node": "Respond — success", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

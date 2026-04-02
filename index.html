@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prendre rendez-vous</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Figtree:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0D0F14;
+      --surface:   #161921;
+      --surface-2: #1E2330;
+      --border:    rgba(255,255,255,0.08);
+      --accent:    #5B8DEF;
+      --accent-dk: #4070D4;
+      --accent-bg: rgba(91,141,239,0.1);
+      --accent-brd:rgba(91,141,239,0.25);
+      --text:      #F0F2F7;
+      --muted:     rgba(240,242,247,0.45);
+      --muted-2:   rgba(240,242,247,0.2);
+      --error:     #F87171;
+      --success:   #34D399;
+      --font-head: 'Syne', sans-serif;
+      --font-body: 'Figtree', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ─── BACKGROUND TEXTURE ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(91,141,239,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 90%, rgba(91,141,239,0.05) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── LAYOUT ─── */
+    .page-wrapper {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ─── HEADER ─── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(13,15,20,0.8);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .logo-mark {
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-head);
+      font-weight: 800;
+      font-size: 14px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .logo-name {
+      font-family: var(--font-head);
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    .logo-name span { color: var(--accent); }
+
+    /* ─── MAIN ─── */
+    main {
+      flex: 1;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 48px 20px 80px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 860px;
+      display: grid;
+      grid-template-columns: 1fr 1.4fr;
+      gap: 32px;
+      align-items: start;
+    }
+
+    @media (max-width: 720px) {
+      .container { grid-template-columns: 1fr; }
+    }
+
+    /* ─── LEFT PANEL ─── */
+    .info-panel {
+      position: sticky;
+      top: 90px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent-bg);
+      border: 1px solid var(--accent-brd);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 20px;
+    }
+
+    .tag::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.7); }
+    }
+
+    .info-panel h1 {
+      font-family: var(--font-head);
+      font-size: clamp(24px, 3vw, 32px);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+
+    .info-panel p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 28px;
+    }
+
+    .details-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .details-list li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .detail-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin-bottom: 24px;
+    }
+
+    .organizer {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .organizer-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-head);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .organizer-info { line-height: 1.3; }
+    .organizer-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .organizer-role { font-size: 12px; color: var(--muted); }
+
+    /* ─── BOOKING WIDGET ─── */
+    .booking-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px 28px;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.02),
+        0 24px 48px rgba(0,0,0,0.4),
+        0 8px 16px rgba(0,0,0,0.2);
+    }
+
+    #booking-widget { font-family: var(--font-body); color: var(--text); }
+
+    /* Progress */
+    .bw-progress { display:flex; gap:6px; margin-bottom:28px; justify-content:center; }
+    .bw-progress-seg { flex:1; height:3px; border-radius:2px; background:var(--surface-2); transition:background 0.3s ease; }
+    .bw-progress-seg.done { background:var(--accent); }
+
+    /* Step labels */
+    .bw-step-label { text-align:center; font-family:var(--font-head); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:var(--accent); margin-bottom:8px; }
+    .bw-step-title { text-align:center; font-family:var(--font-head); font-size:clamp(16px,2vw,20px); font-weight:700; color:var(--text); margin-bottom:6px; }
+    .bw-step-sub   { text-align:center; font-size:13px; color:var(--muted); margin-bottom:28px; }
+
+    .bw-recap {
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      background:var(--accent-bg); border:1px solid var(--accent-brd);
+      border-radius:8px; padding:10px 16px; font-size:13px; color:rgba(240,242,247,0.75);
+      margin-bottom:24px; flex-wrap:wrap;
+    }
+
+    /* Calendar */
+    .bw-cal { background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:20px; max-width:340px; margin:0 auto; }
+    .bw-cal-nav { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+    .bw-cal-nav-btn {
+      background:rgba(255,255,255,0.05); border:1px solid var(--border); color:var(--muted);
+      width:30px; height:30px; border-radius:7px; cursor:pointer; font-size:15px;
+      display:flex; align-items:center; justify-content:center;
+      transition:background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .bw-cal-nav-btn:hover:not(:disabled) { background:var(--accent-bg); border-color:var(--accent-brd); color:var(--accent); }
+    .bw-cal-nav-btn:disabled { opacity:0.3; cursor:not-allowed; }
+    .bw-cal-month { font-family:var(--font-head); font-size:14px; font-weight:700; color:var(--text); }
+    .bw-cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; text-align:center; }
+    .bw-cal-dow { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted-2); padding:3px 0 7px; }
+    .bw-cal-day {
+      aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+      font-size:13px; border-radius:7px; cursor:pointer; color:var(--muted);
+      transition:background 0.15s, color 0.15s, transform 0.1s;
+      border:1px solid transparent;
+    }
+    .bw-cal-day:hover:not(.disabled):not(.selected) { background:var(--accent-bg); color:var(--text); border-color:var(--accent-brd); }
+    .bw-cal-day.selected { background:var(--accent); color:#fff; font-weight:700; box-shadow:0 2px 12px rgba(91,141,239,0.4); border-color:transparent; }
+    .bw-cal-day.today { border-color:rgba(91,141,239,0.5); color:var(--accent); }
+    .bw-cal-day.disabled { color:var(--muted-2); cursor:not-allowed; pointer-events:none; }
+    .bw-cal-day.empty { pointer-events:none; }
+
+    /* Slots */
+    .bw-slots-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; max-width:360px; margin:0 auto; }
+    @media (max-width:480px) { .bw-slots-grid { grid-template-columns:repeat(2,1fr); } }
+    .bw-slot {
+      background:var(--surface-2); border:1px solid var(--border); border-radius:8px;
+      padding:10px 6px; text-align:center; font-size:13px; color:var(--muted);
+      cursor:pointer; transition:background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+    }
+    .bw-slot:hover { background:var(--accent-bg); border-color:var(--accent-brd); color:var(--text); transform:translateY(-1px); }
+    .bw-slot:active { transform:translateY(0); }
+
+    /* Loading */
+    .bw-loading { text-align:center; padding:40px; color:var(--muted); font-size:14px; }
+    .bw-loading-spinner { width:24px; height:24px; border:2px solid var(--surface-2); border-top-color:var(--accent); border-radius:50%; animation:bw-spin 0.8s linear infinite; margin:0 auto 12px; }
+    @keyframes bw-spin { to { transform:rotate(360deg); } }
+
+    .bw-msg { text-align:center; padding:20px; color:var(--muted); font-size:14px; line-height:1.6; }
+
+    /* Form */
+    .bw-form { max-width:440px; margin:0 auto; display:flex; flex-direction:column; gap:14px; }
+    .bw-field label { display:block; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); margin-bottom:6px; }
+    .bw-field input, .bw-field select, .bw-field textarea {
+      width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:8px;
+      padding:11px 13px; font-size:14px; color:var(--text); font-family:var(--font-body);
+      outline:none; transition:border-color 0.2s, box-shadow 0.2s;
+    }
+    .bw-field input:focus, .bw-field select:focus, .bw-field textarea:focus {
+      border-color:var(--accent-brd);
+      box-shadow:0 0 0 3px rgba(91,141,239,0.12);
+    }
+    .bw-field select option { background:#1E2330; }
+    .bw-field textarea { resize:vertical; min-height:76px; }
+    .bw-field-tel { display:flex; gap:8px; }
+    .bw-field-tel-prefix {
+      background:var(--surface-2); border:1px solid var(--border); border-radius:8px;
+      padding:11px 13px; font-size:14px; color:var(--muted); white-space:nowrap; flex-shrink:0;
+    }
+    .bw-field.error input, .bw-field.error select, .bw-field.error textarea { border-color:rgba(248,113,113,0.5); }
+    .bw-field-err { font-size:11px; color:var(--error); margin-top:4px; display:none; }
+    .bw-field.error .bw-field-err { display:block; }
+
+    .bw-submit-btn {
+      width:100%; background:var(--accent); color:#fff; border:none; border-radius:9px;
+      padding:14px; font-family:var(--font-head); font-size:14px; font-weight:700;
+      text-transform:uppercase; letter-spacing:0.04em; cursor:pointer;
+      box-shadow:0 4px 20px rgba(91,141,239,0.3);
+      transition:background 0.2s, transform 0.15s, box-shadow 0.2s;
+      margin-top:4px;
+    }
+    .bw-submit-btn:hover:not(:disabled) { background:var(--accent-dk); transform:translateY(-1px); box-shadow:0 6px 24px rgba(91,141,239,0.4); }
+    .bw-submit-btn:active:not(:disabled) { transform:translateY(0); }
+    .bw-submit-btn:disabled { background:var(--surface-2); color:var(--muted-2); cursor:not-allowed; box-shadow:none; }
+
+    .bw-submit-err { text-align:center; font-size:13px; color:var(--error); margin-top:-6px; display:none; }
+
+    .bw-back-btn {
+      background:none; border:none; color:var(--muted-2); font-size:13px; cursor:pointer;
+      padding:0; display:flex; align-items:center; gap:4px; margin:0 auto 20px;
+      font-family:var(--font-body); transition:color 0.15s;
+    }
+    .bw-back-btn:hover { color:var(--muted); }
+
+    /* Confirm */
+    .bw-confirm { text-align:center; padding:16px 0; }
+    .bw-confirm-icon {
+      width:56px; height:56px; border-radius:50%;
+      background:rgba(52,211,153,0.1); border:2px solid var(--success);
+      display:flex; align-items:center; justify-content:center; font-size:22px;
+      margin:0 auto 20px; color:var(--success);
+    }
+    .bw-confirm h3 { font-family:var(--font-head); font-size:20px; font-weight:700; color:var(--text); margin-bottom:8px; }
+    .bw-confirm p { font-size:14px; color:var(--muted); line-height:1.65; max-width:320px; margin:0 auto 24px; }
+    .bw-confirm-details {
+      background:var(--surface-2); border:1px solid var(--border); border-radius:10px;
+      padding:16px 20px; display:inline-flex; flex-direction:column; gap:8px;
+      text-align:left; min-width:230px;
+    }
+    .bw-confirm-details span { font-size:13px; color:var(--muted); display:flex; align-items:center; gap:8px; }
+  </style>
+</head>
+<body>
+  <div class="page-wrapper">
+
+    <header>
+      <div class="logo-mark">A</div>
+      <span class="logo-name">Votre<span>Société</span></span>
+    </header>
+
+    <main>
+      <div class="container">
+
+        <!-- LEFT: Info Panel -->
+        <div class="info-panel">
+          <div class="tag">Gratuit · 30 min</div>
+          <h1>Réservez votre appel découverte</h1>
+          <p>Discutons de votre projet lors d'un appel de 30 minutes. Pas de pression, pas d'engagement — juste une conversation pour voir comment on peut vous aider.</p>
+
+          <ul class="details-list">
+            <li>
+              <div class="detail-icon">🕐</div>
+              <span>30 minutes · Visio ou téléphone</span>
+            </li>
+            <li>
+              <div class="detail-icon">📅</div>
+              <span>Lun–Ven 9h–19h30 · Sam 10h–12h</span>
+            </li>
+            <li>
+              <div class="detail-icon">📧</div>
+              <span>Confirmation par email + invitation Google Calendar</span>
+            </li>
+            <li>
+              <div class="detail-icon">🔒</div>
+              <span>Vos données restent confidentielles</span>
+            </li>
+          </ul>
+
+          <div class="divider"></div>
+
+          <div class="organizer">
+            <div class="organizer-avatar">JD</div>
+            <div class="organizer-info">
+              <div class="organizer-name">Jean Dupont</div>
+              <div class="organizer-role">Fondateur · VotreSociété</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Booking Widget -->
+        <div class="booking-card">
+          <div id="booking-widget"></div>
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+
+  <script>
+  (function() {
+    // ─── CONFIG — à remplacer par vos URLs n8n ───────────────────────────────
+    var BOOKING_CONFIG = {
+      availabilityUrl: 'https://VOTRE_INSTANCE_N8N/webhook/availability',
+      bookUrl:         'https://VOTRE_INSTANCE_N8N/webhook/book',
+      source:          'landing'
+    };
+    // ─────────────────────────────────────────────────────────────────────────
+
+    var state = {
+      step: 'calendar',
+      year: 0, month: 0,
+      selectedDate: null,
+      selectedTime: null,
+      slots: [],
+      slotsLoading: false,
+      slotsError: false,
+      submitLoading: false
+    };
+
+    var root = document.getElementById('booking-widget');
+
+    var MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin',
+                     'Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+    var DAYS_FR   = ['L','M','M','J','V','S','D'];
+
+    function el(tag, cls, text) {
+      var e = document.createElement(tag);
+      if (cls)  e.className   = cls;
+      if (text) e.textContent = text;
+      return e;
+    }
+
+    function toYMD(d) {
+      return d.getFullYear() + '-' +
+        String(d.getMonth()+1).padStart(2,'0') + '-' +
+        String(d.getDate()).padStart(2,'0');
+    }
+
+    function isPast(date) {
+      var t = new Date(); t.setHours(0,0,0,0);
+      return date < t;
+    }
+
+    function formatDateFR(ymd) {
+      var parts = ymd.split('-');
+      var date  = new Date(+parts[0], +parts[1]-1, +parts[2]);
+      var jours = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+      return jours[date.getDay()] + ' ' + parts[2] + ' ' +
+             MONTHS_FR[+parts[1]-1] + ' ' + parts[0];
+    }
+
+    function progressBar(active) {
+      var bar = el('div','bw-progress');
+      for (var i = 1; i <= 3; i++) {
+        bar.appendChild(el('div', 'bw-progress-seg' + (i <= active ? ' done' : '')));
+      }
+      return bar;
+    }
+
+    function backBtn(label, onClick) {
+      var btn = el('button','bw-back-btn');
+      btn.appendChild(document.createTextNode('\u2190 ' + label));
+      btn.addEventListener('click', onClick);
+      return btn;
+    }
+
+    function renderCalendar() {
+      root.appendChild(progressBar(1));
+      root.appendChild(el('div','bw-step-label','Étape 1 / 3'));
+      root.appendChild(el('div','bw-step-title','Choisir une date'));
+      root.appendChild(el('div','bw-step-sub','Appel découverte · 30 min · Visio ou téléphone'));
+
+      var cal   = el('div','bw-cal');
+      var nav   = el('div','bw-cal-nav');
+      var today = new Date();
+
+      var prevBtn = el('button','bw-cal-nav-btn');
+      prevBtn.textContent = '\u2039';
+      var isCurrentMonth = (state.year === today.getFullYear() && state.month === today.getMonth());
+      if (isCurrentMonth) prevBtn.disabled = true;
+      prevBtn.addEventListener('click', function() {
+        state.month--;
+        if (state.month < 0) { state.month = 11; state.year--; }
+        render();
+      });
+
+      var monthLabel = el('div','bw-cal-month', MONTHS_FR[state.month] + ' ' + state.year);
+
+      var nextBtn = el('button','bw-cal-nav-btn');
+      nextBtn.textContent = '\u203a';
+      nextBtn.addEventListener('click', function() {
+        state.month++;
+        if (state.month > 11) { state.month = 0; state.year++; }
+        render();
+      });
+
+      nav.appendChild(prevBtn);
+      nav.appendChild(monthLabel);
+      nav.appendChild(nextBtn);
+      cal.appendChild(nav);
+
+      var grid = el('div','bw-cal-grid');
+      DAYS_FR.forEach(function(d) {
+        grid.appendChild(el('div','bw-cal-dow',d));
+      });
+
+      var firstDay = new Date(state.year, state.month, 1);
+      var startDow = firstDay.getDay();
+      startDow = (startDow === 0) ? 6 : startDow - 1;
+      for (var i = 0; i < startDow; i++) {
+        grid.appendChild(el('div','bw-cal-day empty'));
+      }
+
+      var daysInMonth = new Date(state.year, state.month + 1, 0).getDate();
+      var todayYMD    = toYMD(today);
+
+      for (var d = 1; d <= daysInMonth; d++) {
+        var date    = new Date(state.year, state.month, d);
+        var ymd     = toYMD(date);
+        var dow     = date.getDay();
+        var dayEl   = el('div','bw-cal-day', String(d));
+        var disabled = isPast(date) || dow === 0;
+
+        if (ymd === todayYMD)          dayEl.classList.add('today');
+        if (disabled)                   dayEl.classList.add('disabled');
+        if (state.selectedDate === ymd) dayEl.classList.add('selected');
+
+        if (!disabled) {
+          (function(ymdCapture) {
+            dayEl.addEventListener('click', function() {
+              state.selectedDate = ymdCapture;
+              state.step         = 'slots';
+              state.slots        = [];
+              state.slotsError   = false;
+              render();
+              fetchSlots(ymdCapture);
+            });
+          })(ymd);
+        }
+        grid.appendChild(dayEl);
+      }
+
+      cal.appendChild(grid);
+      root.appendChild(cal);
+    }
+
+    function fetchSlots(ymd) {
+      state.slotsLoading = true;
+      state.slotsError   = false;
+      render();
+      fetch(BOOKING_CONFIG.availabilityUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: ymd })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        state.slotsLoading = false;
+        if (data.error || !Array.isArray(data.slots)) {
+          state.slotsError = true;
+        } else {
+          state.slots = data.slots;
+        }
+        render();
+      })
+      .catch(function() {
+        state.slotsLoading = false;
+        state.slotsError   = true;
+        render();
+      });
+    }
+
+    function renderSlots() {
+      root.appendChild(progressBar(2));
+      root.appendChild(backBtn('Choisir une autre date', function() {
+        state.step = 'calendar'; render();
+      }));
+      root.appendChild(el('div','bw-step-label','Étape 2 / 3'));
+      root.appendChild(el('div','bw-step-title','Choisir un créneau'));
+      root.appendChild(el('div','bw-step-sub', formatDateFR(state.selectedDate) + ' · 30 min'));
+
+      if (state.slotsLoading) {
+        var loading = el('div','bw-loading');
+        var spinner = el('div','bw-loading-spinner');
+        loading.appendChild(spinner);
+        loading.appendChild(document.createTextNode('Chargement des disponibilités...'));
+        root.appendChild(loading);
+        return;
+      }
+
+      if (state.slotsError) {
+        root.appendChild(el('div','bw-msg','Impossible de charger les disponibilités. Réessayez ou contactez-nous directement.'));
+        var retryBtn = el('button','bw-submit-btn','Réessayer');
+        retryBtn.style.maxWidth = '200px';
+        retryBtn.style.margin   = '16px auto 0';
+        retryBtn.style.display  = 'block';
+        retryBtn.addEventListener('click', function() { fetchSlots(state.selectedDate); });
+        root.appendChild(retryBtn);
+        return;
+      }
+
+      if (state.slots.length === 0) {
+        root.appendChild(el('div','bw-msg','Aucun créneau disponible ce jour. Choisissez une autre date.'));
+        return;
+      }
+
+      var grid = el('div','bw-slots-grid');
+      state.slots.forEach(function(time) {
+        var btn = el('div','bw-slot', time);
+        btn.addEventListener('click', function() {
+          state.selectedTime = time;
+          state.step = 'form';
+          render();
+        });
+        grid.appendChild(btn);
+      });
+      root.appendChild(grid);
+    }
+
+    function makeField(id, labelText, inputType, required) {
+      var wrap = el('div','bw-field');
+      wrap.dataset.field = id;
+      var lbl = document.createElement('label');
+      lbl.setAttribute('for', 'bw-' + id);
+      lbl.textContent = labelText + (required ? ' *' : '');
+      var inp;
+      if (inputType === 'textarea') {
+        inp = document.createElement('textarea');
+      } else if (inputType === 'select') {
+        inp = document.createElement('select');
+      } else {
+        inp = document.createElement('input');
+        inp.type = inputType;
+      }
+      inp.id = 'bw-' + id;
+      var errDiv = el('div','bw-field-err', required ? 'Ce champ est requis' : '');
+      wrap.appendChild(lbl);
+      wrap.appendChild(inp);
+      wrap.appendChild(errDiv);
+      return { wrap: wrap, inp: inp };
+    }
+
+    function renderForm() {
+      root.appendChild(progressBar(3));
+      root.appendChild(backBtn('Choisir un autre créneau', function() {
+        state.step = 'slots'; render();
+      }));
+      root.appendChild(el('div','bw-step-label','Étape 3 / 3'));
+      root.appendChild(el('div','bw-step-title','Vos coordonnées'));
+
+      var recap = el('div','bw-recap');
+      recap.appendChild(document.createTextNode('📅 '));
+      var s1 = el('strong'); s1.textContent = formatDateFR(state.selectedDate);
+      recap.appendChild(s1);
+      recap.appendChild(document.createTextNode(' à '));
+      var s2 = el('strong'); s2.textContent = state.selectedTime;
+      recap.appendChild(s2);
+      recap.appendChild(document.createTextNode(' · 30 min'));
+      root.appendChild(recap);
+
+      var form = el('div','bw-form');
+
+      var nomF = makeField('nom','Nom complet','text',true);
+      nomF.inp.placeholder = 'Marie Martin';
+      form.appendChild(nomF.wrap);
+
+      var emailF = makeField('email','Email','email',true);
+      emailF.inp.placeholder = 'marie@exemple.fr';
+      form.appendChild(emailF.wrap);
+
+      var telWrap = el('div','bw-field');
+      telWrap.dataset.field = 'telephone';
+      var telLbl = document.createElement('label');
+      telLbl.setAttribute('for','bw-telephone');
+      telLbl.textContent = 'Téléphone *';
+      var telRow = el('div','bw-field-tel');
+      var telPrefix = el('div','bw-field-tel-prefix');
+      telPrefix.textContent = '🇫🇷 +33';
+      var telInp = document.createElement('input');
+      telInp.type = 'tel'; telInp.id = 'bw-telephone';
+      telInp.placeholder = '6 12 34 56 78';
+      telInp.style.flex = '1';
+      var telErr = el('div','bw-field-err','Ce champ est requis');
+      telRow.appendChild(telPrefix); telRow.appendChild(telInp);
+      telWrap.appendChild(telLbl); telWrap.appendChild(telRow); telWrap.appendChild(telErr);
+      form.appendChild(telWrap);
+
+      var motifF = makeField('motif','Objet de l\'appel','select',true);
+      var motifOptions = [
+        { value: '',               text: 'Choisir...' },
+        { value: 'decouverte',     text: 'Découverte — présentation du service' },
+        { value: 'projet',         text: 'Discuter d\'un projet spécifique' },
+        { value: 'question',       text: 'Poser une question technique' },
+        { value: 'autre',          text: 'Autre sujet' }
+      ];
+      motifOptions.forEach(function(opt) {
+        var o = document.createElement('option');
+        o.value = opt.value; o.textContent = opt.text;
+        motifF.inp.appendChild(o);
+      });
+      motifF.wrap.querySelector('.bw-field-err').textContent = 'Merci de choisir une option';
+      form.appendChild(motifF.wrap);
+
+      var msgF = makeField('message','Message (optionnel)','textarea',false);
+      msgF.inp.placeholder = 'Décrivez brièvement votre contexte...';
+      form.appendChild(msgF.wrap);
+
+      var submitBtn = el('button','bw-submit-btn','Confirmer le rendez-vous →');
+      submitBtn.id = 'bw-submit';
+      var submitErr = el('div','bw-submit-err');
+      submitErr.id = 'bw-submit-err';
+      form.appendChild(submitBtn);
+      form.appendChild(submitErr);
+      root.appendChild(form);
+
+      submitBtn.addEventListener('click', function() {
+        var valid = true;
+        function check(fieldId, getValue) {
+          var w = form.querySelector('[data-field="' + fieldId + '"]');
+          if (!w) return;
+          if (!getValue() || !getValue().trim()) {
+            w.classList.add('error'); valid = false;
+          } else {
+            w.classList.remove('error');
+          }
+        }
+        check('nom',       function() { return document.getElementById('bw-nom').value; });
+        check('email',     function() { return document.getElementById('bw-email').value; });
+        check('telephone', function() { return document.getElementById('bw-telephone').value; });
+        check('motif',     function() { return document.getElementById('bw-motif').value; });
+        if (!valid) return;
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Envoi en cours...';
+        submitErr.style.display = 'none';
+
+        var payload = {
+          date:      state.selectedDate,
+          time:      state.selectedTime,
+          nom:       document.getElementById('bw-nom').value.trim(),
+          email:     document.getElementById('bw-email').value.trim(),
+          telephone: '+33' + document.getElementById('bw-telephone').value.replace(/\s/g,''),
+          motif:     document.getElementById('bw-motif').value,
+          message:   document.getElementById('bw-message') ? document.getElementById('bw-message').value.trim() : '',
+          source:    BOOKING_CONFIG.source
+        };
+
+        fetch(BOOKING_CONFIG.bookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.success) {
+            state.step = 'confirm'; render();
+          } else if (data.error === 'slot_taken') {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Confirmer le rendez-vous →';
+            submitErr.textContent = 'Ce créneau vient d\'être réservé. Veuillez choisir un autre.';
+            submitErr.style.display = 'block';
+          } else {
+            throw new Error('internal');
+          }
+        })
+        .catch(function() {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Confirmer le rendez-vous →';
+          submitErr.textContent = 'Une erreur est survenue. Réessayez ou contactez-nous directement.';
+          submitErr.style.display = 'block';
+        });
+      });
+    }
+
+    function renderConfirm() {
+      var wrap = el('div','bw-confirm');
+      var icon = el('div','bw-confirm-icon');
+      icon.textContent = '✓';
+      var h3 = el('h3', null, 'Rendez-vous confirmé !');
+      var p  = el('p',  null, 'Votre appel est enregistré. Vous allez recevoir un email de confirmation ainsi qu\'une invitation Google Calendar.');
+      var details = el('div','bw-confirm-details');
+      function detailLine(ico, content) {
+        var span = el('span');
+        span.appendChild(document.createTextNode(ico + ' ' + content));
+        return span;
+      }
+      details.appendChild(detailLine('📅', formatDateFR(state.selectedDate) + ' à ' + state.selectedTime));
+      details.appendChild(detailLine('⏱', '30 minutes'));
+      details.appendChild(detailLine('📧', 'Email de confirmation envoyé'));
+      details.appendChild(detailLine('📆', 'Invitation Google Calendar envoyée'));
+      wrap.appendChild(icon);
+      wrap.appendChild(h3);
+      wrap.appendChild(p);
+      wrap.appendChild(details);
+      root.appendChild(wrap);
+    }
+
+    function clearRoot() {
+      while (root.firstChild) { root.removeChild(root.firstChild); }
+    }
+
+    function render() {
+      if (!root) return;
+      clearRoot();
+      if      (state.step === 'calendar') renderCalendar();
+      else if (state.step === 'slots')    renderSlots();
+      else if (state.step === 'form')     renderForm();
+      else if (state.step === 'confirm')  renderConfirm();
+    }
+
+    var now     = new Date();
+    state.year  = now.getFullYear();
+    state.month = now.getMonth();
+    render();
+  })();
+  </script>
+
+</body>
+</html>

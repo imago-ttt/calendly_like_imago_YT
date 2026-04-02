@@ -1,0 +1,89 @@
+{
+  "name": "Workflow 1 — Disponibilités",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "availability",
+        "responseMode": "lastNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "b1c2d3e4-0002-0001-0001-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "availability-slots"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Récupère la date demandée par le frontend (format YYYY-MM-DD)\nconst body = $input.first().json.body || $input.first().json;\nconst dateStr = body.date; // ex: \"2024-04-15\"\n\n// ── Calcul de l'offset DST Europe/Paris ──────────────────────────────────────\n// Heure d'été (CEST = UTC+2) : dernier dimanche de mars → dernier dimanche d'octobre\n// Heure d'hiver (CET  = UTC+1) : reste de l'année\nconst d = new Date(dateStr);\nconst year = d.getFullYear();\n\n// Dernier dimanche de mars\nconst dstStart = new Date(year, 2, 31);\ndstStart.setDate(31 - dstStart.getDay());\n\n// Dernier dimanche d'octobre\nconst dstEnd = new Date(year, 9, 31);\ndstEnd.setDate(31 - dstEnd.getDay());\n\nconst isDST = (d >= dstStart && d < dstEnd);\nconst offsetMinutes = isDST ? 120 : 60; // +2h ou +1h en minutes\nconst offsetStr = isDST ? '+02:00' : '+01:00';\n\n// ── Génération des créneaux de la journée ────────────────────────────────────\n// Horaires : Lun–Ven 9h–19h30, Sam 10h–12h, Dim fermé\n// Durée : 30 min\nconst dow = d.getDay(); // 0=dim, 1=lun, ..., 6=sam\n\nconst slots = [];\n\nif (dow === 0) {\n  // Dimanche : fermé, on retourne un tableau vide\n} else if (dow === 6) {\n  // Samedi : 10h–12h\n  for (let h = 10; h < 12; h++) {\n    for (let m = 0; m < 60; m += 30) {\n      slots.push(String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0'));\n    }\n  }\n} else {\n  // Lundi–Vendredi : 9h–19h30\n  for (let h = 9; h < 20; h++) {\n    const maxMin = (h === 19) ? 30 : 60;\n    for (let m = 0; m < maxMin; m += 30) {\n      slots.push(String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0'));\n    }\n  }\n}\n\n// ── Construction des plages ISO pour Google Calendar ─────────────────────────\n// On construit timeMin = début de journée, timeMax = fin de journée en UTC\nconst dayStartLocal = new Date(dateStr + 'T00:00:00' + offsetStr);\nconst dayEndLocal   = new Date(dateStr + 'T23:59:59' + offsetStr);\n\nreturn [{\n  json: {\n    date: dateStr,\n    slots,\n    offsetStr,\n    offsetMinutes,\n    timeMin: dayStartLocal.toISOString(),\n    timeMax: dayEndLocal.toISOString()\n  }\n}];"
+      },
+      "id": "b1c2d3e4-0002-0001-0001-000000000002",
+      "name": "Générer les créneaux du jour",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "VOTRE_EMAIL_GCAL@gmail.com",
+          "mode": "id"
+        },
+        "returnAll": true,
+        "options": {
+          "timeMin": "={{ $json.timeMin }}",
+          "timeMax": "={{ $json.timeMax }}"
+        }
+      },
+      "id": "b1c2d3e4-0002-0001-0001-000000000003",
+      "name": "Récupérer les événements GCal",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "REMPLACER_PAR_ID_CREDENTIAL_GCAL",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Récupère tous les items : événements GCal + données du nœud précédent\nconst allItems = $input.all();\n\n// Le premier item contient les créneaux générés (passé via le nœud Code)\n// Les items suivants sont les événements Google Calendar\n// Note : avec le node GCal GetAll, chaque événement est un item séparé\n\n// ── Récupère les données du nœud \"Générer les créneaux du jour\" ──────────────\nconst slotsData = $('Générer les créneaux du jour').first().json;\nconst { date, slots, offsetMinutes } = slotsData;\n\n// ── Récupère les événements GCal ─────────────────────────────────────────────\n// Chaque item est un événement avec json.start.dateTime etc.\nconst events = allItems\n  .map(item => item.json)\n  .filter(ev => ev.start && (ev.start.dateTime || ev.start.date));\n\n// ── Pour chaque créneau, vérifie s'il est occupé ─────────────────────────────\nconst busySlots = new Set();\n\nfor (const ev of events) {\n  const evStart = new Date(ev.start.dateTime || ev.start.date);\n  const evEnd   = new Date(ev.end.dateTime   || ev.end.date);\n\n  for (const slot of slots) {\n    const [hh, mm] = slot.split(':').map(Number);\n    // Convertit le créneau local en UTC\n    const slotStartUTC = new Date(date + 'T00:00:00Z');\n    slotStartUTC.setUTCMinutes(slotStartUTC.getUTCMinutes() + hh * 60 + mm - offsetMinutes);\n    const slotEndUTC = new Date(slotStartUTC.getTime() + 30 * 60 * 1000);\n\n    // Chevauchement : slot est occupé si evStart < slotEnd && evEnd > slotStart\n    if (evStart < slotEndUTC && evEnd > slotStartUTC) {\n      busySlots.add(slot);\n    }\n  }\n}\n\nconst availableSlots = slots.filter(s => !busySlots.has(s));\n\nreturn [{ json: { slots: availableSlots } }];"
+      },
+      "id": "b1c2d3e4-0002-0001-0001-000000000004",
+      "name": "Filtrer les créneaux occupés",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Générer les créneaux du jour", "type": "main", "index": 0 }]
+      ]
+    },
+    "Générer les créneaux du jour": {
+      "main": [
+        [{ "node": "Récupérer les événements GCal", "type": "main", "index": 0 }]
+      ]
+    },
+    "Récupérer les événements GCal": {
+      "main": [
+        [{ "node": "Filtrer les créneaux occupés", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}
